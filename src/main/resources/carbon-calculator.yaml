@@ -1,0 +1,975 @@
+openapi: 3.0.3
+info:
+  title: Carbon Calculator API
+  description: >-
+    OpenAPI Specification for Carbon Calculator. For additional documentation
+    and use cases, go to [Mastercard
+    Developers](https://developer.mastercard.com/product/carbon-calculator).
+  contact:
+    name: API Support
+    email: apisupport@mastercard.com
+    url: https://developer.mastercard.com/support
+  version: 1.0.0
+externalDocs:
+  description: ISO 4217 - Currency Code
+  url: 'https://en.wikipedia.org/wiki/ISO_4217'
+servers:
+  - url: 'https://sandbox.api.mastercard.co.in/carbon'
+    description: Sandbox
+  - url: 'https://api.mastercard.co.in/carbon'
+    description: Production
+tags:
+  - name: Service Provider
+    description: >-
+      APIs for getting and/or updating issuer onboarding
+      details.
+  - name: Environmental Impact
+    description: >-
+      APIs for caluclating carbon emission for transactions based on MCC
+  - name: Supported Parameters
+    description: >-
+      APIs for fetching the supported merchants and
+      currencies by the system.
+paths:
+  /service-providers:
+    get:
+      tags:
+        - Service Provider
+      summary: Fetches an existing Service Provider
+      description: >-
+        Allows a registered Service Provider to fetch its information from the
+        server.
+      operationId: GetServiceProviderById
+      responses:
+        '200':
+          $ref: '#/components/responses/ServiceProvider'
+        '404':
+          $ref: '#/components/responses/ServiceProviderNotFoundError'
+    put:
+      tags:
+        - Service Provider
+      summary: Updates an existing Service Provider details
+      description: >-
+        Allows a registered Service Provider to update its configuration on the server.
+        A Service Provider should call this API first after the successful creation of the
+        project on Mastercard Developers before they call other APIs.
+      operationId: UpdateServiceProvider
+      requestBody:
+        $ref: '#/components/requestBodies/ServiceProviderConfig'
+      responses:
+        '200':
+          $ref: '#/components/responses/ServiceProvider'
+        '400':
+          $ref: '#/components/responses/ServiceProviderBadRequestError'
+        '404':
+          $ref: '#/components/responses/ServiceProviderNotFoundError'
+  /transaction-footprints:
+    post:
+      tags:
+        - Environmental Impact
+      summary: Calculate Transaction Footprints
+      description: >-
+        Calculates carbon emission based on the payment transaction
+        amount and the merchant category code. You can send **one or approx 5000
+        transactions** together to get the transaction footprints.
+      operationId: FootprintsByTransactionData
+      requestBody:
+        $ref: '#/components/requestBodies/Transactions'
+      responses:
+        '200':
+          $ref: '#/components/responses/TransactionFootprintsData'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeError'
+  /supported-currencies:
+    get:
+      tags:
+        - Supported Parameters
+      summary: Provide Supported Currencies
+      description: >-
+        Provides the list of currencies supported by the application. While
+        sending a transaction amount in the Amount object, 'currencyCode' should be
+        from one of the supported currencies. It is recommended to cache this
+        list and use it for checking before sending transactions for footprint
+        calculation.
+        Generally this list doesn't change that often, but
+        it is recommended to refresh this data every 24-hours.
+      operationId: GetSupportedCurrencies
+      responses:
+        '200':
+          $ref: '#/components/responses/SupportedCurrencies'
+  /supported-merchant-categories:
+    get:
+      tags:
+        - Supported Parameters
+      summary: Provide Supported MCCs
+      description: >-
+        Provides a list of merchant category codes supported by the application.
+        While sending transaction data in the Transaction object, 'mcc' should be
+        from one of the supported merchant categories. It is recommended to
+        cache this list and use it for checking before sending transactions for
+        footprint calculation.
+        Generally this list doesn't change that
+        often, but it is recommended to refresh this data every 24-hours.
+      operationId: GetSupportedMerchantCategories
+      responses:
+        '200':
+          $ref: '#/components/responses/SupportedMerchantCategories'
+components:
+  schemas:
+    CurrencyCode:
+      type: string
+      description: Currency code as per ISO 4217
+      minLength: 3
+      maxLength: 3
+      pattern: '^[A-Za-z]{3}$'
+    TransactionId:
+      type: string
+      description: >-
+        A unique ID associated with a payment transaction, For example, original
+        payment transaction ID. The same ID will be returned in the response
+        corresponding to its payment transaction.
+      minLength: 1
+      maxLength: 100
+      pattern: '^[\w\-\_]{1,100}'
+    Transactions:
+      title: Transactions
+      type: array
+      description: >-
+        List of payment transactions from API consumer for calculating
+        transaction footprint.
+      minItems: 1
+      maxItems: 5000
+      items:
+        $ref: '#/components/schemas/TransactionData'
+      example:
+        - transactionId: 'ee421c25-f928-4bf6-b884-3600b76b860d'
+          mcc: 3000
+          amount:
+            value: 500
+            currencyCode: 'GBP'
+          cardBrand: 'MA'
+        - transactionId: 'a213c72c-f13a-4930-a5f9-8cf765d42ca1'
+          mcc: 3000
+          amount:
+            value: 500
+            currencyCode: 'GBP'
+          cardBrand: 'OTH'
+        - transactionId: 'e7463834-01fe-4f91-9562-484d10053390'
+          mcc: 3000
+          amount:
+            value: 500
+            currencyCode: 'GBP'
+          cardBrand: 'NC'
+        - transactionId: 'fdc4626c-f51e-4ba6-9728-c79ac1d9aec8'
+          mcc: 5962
+          amount:
+            value: 50
+            currencyCode: 'EUR'
+    TransactionData:
+      title: TransactionData
+      type: object
+      description: Object which holds information about payment transaction for carbon scoring and other properties.
+      allOf:
+        - $ref: '#/components/schemas/Transaction'
+      properties:
+        cardBrand:
+          $ref: '#/components/schemas/CardBrand'
+    Transaction:
+      title: Transaction
+      type: object
+      description: A single payment transaction for carbon scoring.
+      required:
+        - amount
+        - transactionId
+      properties:
+        transactionId:
+          $ref: '#/components/schemas/TransactionId'
+        mcc:
+          type: string
+          description: >-
+            Merchant category code of a payment transaction that uniquely
+            defines a merchant business.
+          minLength: 1
+          maxLength: 4
+          pattern: '^\d{1,4}'
+          example: '3997'
+        amount:
+          $ref: '#/components/schemas/Amount'
+    mcc:
+      type: string
+      description: >-
+        Merchant category code of a payment transaction that uniquely
+        defines a merchant business.
+      minLength: 1
+      maxLength: 4
+      pattern: '^\d{1,4}'
+      example: '3997'
+    CardBrand:
+      title: CardBrand
+      type: string
+      minLength: 1
+      maxLength: 3
+      pattern: '^(MA|OTH|NC)$'
+      example: 'MA'
+      description: >-
+        Brand type of the payment card through which transaction done. Possible values are,
+
+        * MA = Mastercard branded payment card.
+        
+        * OTH = Payment card brand other than Mastercard.
+        
+        * NC = Non card based transaction.
+    Amount:
+      title: Amount
+      type: object
+      description: The value and the currency of a payment transaction.
+      required:
+        - currencyCode
+        - value
+      properties:
+        value:
+          type: number
+          description: Actual amount of a payment transaction
+          maximum: 1000000000
+          exclusiveMaximum: false
+          minimum: -1000000000
+          exclusiveMinimum: false
+          example: 100
+        currencyCode:
+          $ref: '#/components/schemas/CurrencyCode'
+    TransactionFootprintsData:
+      title: TransactionFootprintsData
+      type: array
+      description: >-
+        List of transaction footprints corresponding to each transaction in
+        Transactions request.
+      minItems: 1
+      maxItems: 5000
+      items:
+        $ref: '#/components/schemas/TransactionFootprintData'
+    TransactionFootprintData:
+      title: TransactionFootprintData
+      type: object
+      description: >-
+        A single transaction footprint calculated for a corresponding transaction.
+      allOf:
+        - $ref: '#/components/schemas/TransactionFootprint'
+      properties:
+        cardBrand:
+          $ref: '#/components/schemas/CardBrand'
+    TransactionFootprint:
+      title: TransactionFootprint
+      type: object
+      description: >-
+        A single transaction footprint calculated for a corresponding payment
+        transaction.
+      required:
+        - transactionId
+        - scoreStatus
+      allOf:
+        - $ref: '#/components/schemas/CarbonUsage'
+        - type: object
+          properties:
+            transactionId:
+              $ref: '#/components/schemas/TransactionId'
+            mcc:
+              type: string
+              description: >-
+                Merchant category code of a payment transaction that uniquely
+                defines a merchant business (same as in request).
+              minLength: 1
+              maxLength: 4
+              pattern: '^\d{1,4}'
+            category:
+              $ref: '#/components/schemas/Category'
+            scoreReference:
+              type: string
+              description: >-
+                Score Reference defines transaction scoring type, 
+                based on which score has been generated. Possible values are MCC or MID.
+              minLength: 3
+              maxLength: 3
+              required:
+                - id
+                - type
+            scoreStatus:
+              type: string
+              example: 'SUCCESS'
+              description: >-
+                  scoreStatus defines the status of carbon scoring for a given transaction. Possible values are,
+                  
+                  * SUCCESS = Transaction is scored successfully.
+                  
+                  * FAILURE = Transaction scoring is failed.
+              minLength: 5
+              maxLength: 7
+            errorCode:
+              type: string
+              example: 'INVALID_MCC'
+              description: >-
+                  A unique constant identifying the error case encountered during carbon scoring for a given transaction.
+              minLength: 1
+              maxLength: 100
+            errorMessage:
+              type: string
+              example: 'MCC Provided in the request is Invalid. Kindly Request again with valid MCC.'
+              description: >-
+                  Short description of the errorCode field.
+              minLength: 10
+              maxLength: 1000
+    Category:
+      title: Category
+      type: object
+      description: User understandable information about an MCC categorization.
+      properties:
+        mainCategory:
+          title: mainCategory
+          type: string
+          description: Main category to which an MCC belongs.
+          minLength: 5
+          maxLength: 100
+          pattern: '^[\w\-\_\&\,]+[\w\-\_\&\,\ ]{5,100}'
+          example: Shopping
+        subCategory:
+          title: subCategory
+          type: string
+          description: Sub-category of a category to which an MCC belongs.
+          minLength: 5
+          maxLength: 100
+          pattern: '^[\w\-\_\&\,]+[\w\-\_\&\,\ ]{5,100}'
+          example: Department Store
+        sector:
+          title: sector
+          type: string
+          description: Sector of a category to which an MCC belongs.
+          minLength: 5
+          maxLength: 100
+          pattern: '^[\w\-\_\&\,]+[\w\-\_\&\,\ ]{5,100}'
+          example: Specialty Retail & Services
+        sectorCode:
+          title: sectorCode
+          type: string
+          description: Unique code assigned to each sector.
+          minLength: 3
+          maxLength: 3
+          pattern: '^\d{3}'
+          example: '302'
+    SupportedCurrencies:
+      title: SupportedCurrencies
+      type: array
+      description: List of supported currencies.
+      minItems: 1
+      maxItems: 1000
+      items:
+        $ref: '#/components/schemas/Currency'
+    Currency:
+      title: Currency
+      type: object
+      description: Information for a supported currency.
+      required:
+        - currencyCode
+      properties:
+        currencyCode:
+          $ref: '#/components/schemas/CurrencyCode'
+    SupportedMerchantCategories:
+      title: SupportedMerchantCategories
+      type: array
+      description: List of supported merchant categories.
+      minItems: 1
+      maxItems: 5000
+      items:
+        $ref: '#/components/schemas/MerchantCategory'
+    MerchantCategory:
+      title: MerchantCategory
+      type: object
+      description: Information for a supported merchant category.
+      required:
+        - mcc
+        - category
+      properties:
+        mcc:
+          type: string
+          maxLength: 4
+          minLength: 1
+          pattern: '^\d{1,4}'
+          description: >-
+            Merchant category code of a payment transaction that uniquely
+            defines a merchant business.
+          example: '3862'
+        category:
+          $ref: '#/components/schemas/Category'
+    CarbonUsage:
+      title: CarbonUsage
+      type: object
+      description: Object to hold carbon usage data.
+      properties:
+        carbonEmissionInGrams:
+          title: carbonEmissionInGrams
+          type: number
+          description: The transaction's CO2 emission in grams.
+          example: 48.52
+        carbonEmissionInOunces:
+          title: carbonEmissionInOunces
+          type: number
+          description: The transaction's CO2 emission in ounces.
+          example: 1.71
+    ServiceProvider:
+      title: ServiceProvider
+      type: object
+      description: Information about a Service Provider as available on the server.
+      required:
+        - clientId
+        - customerName
+        - supportedAccountRange
+        - status
+      properties:
+        serviceProviderId:
+          type: string
+          minLength: 1
+          maxLength: 36
+          pattern: ^[\w\d\-\_]{1,36}
+          description: Unique Service Provider id from the Mastercard Developer Portal.
+          example: 'ebc8c1bd-24c5-4150-a33b-81d561a6f808'
+        clientId:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '^[\w\d\-\_]{1,200}'
+          description: >-
+            Unique Service Provider identifier from the Mastercard Developer
+            Portal.
+          example: fjl2fxzsYl1OpvxkBItC9nVw1PSQc_b-eQMcmQFg011ab4b5
+        customerId:
+          type: string
+          pattern: '^(?:[1-9]\d{0,9}|9999999999)$'
+          minLength: 1
+          maxLength: 10
+          description: >-
+            Unique Service Provider identifier assigned by Mastercard which
+            remains same across all Mastercard systems.
+          example: '1234567'
+        customerName:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '^[\w\s]{1,200}'
+          description: >-
+            Name of a Service Provider as registered on the server. This doesn't
+            have to be a legal name.
+          example: ABC Bank
+        supportedAccountRange:
+          type: string
+          minLength: 4
+          maxLength: 1000
+          pattern: '^[\d\,]{4,1000}'
+          description: >-
+            Comma separated account range supported by a Service Provider as
+            available on the server.
+          example: '534403,518145,518152,5403,5424'
+        email:
+          type: string
+          description: Email address of a Service Provider as registered on the server.
+          minLength: 5
+          maxLength: 100
+          example: John.Doe@mail.com
+        status:
+          type: string
+          minLength: 6
+          maxLength: 9
+          description: >-
+            Status of a Service Provider on the server. Possible values are
+            ACTIVE, INACTIVE & TERMINATED.
+          example: ACTIVE
+        senderId:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Logical address of the service provider.
+          example: ''
+        ica:
+          type: string
+          minLength: 1
+          maxLength: 11
+          description: Activity ICA value of the customer.
+          example: '8142'
+        cardHolderBase:
+          type: string
+          minLength: 1
+          maxLength: 20
+          description: Total cardholder base of the issuer.
+          example: '54123'
+        channel:
+          type: string
+          minLength: 2
+          maxLength: 2
+          description: Channel of onboarding from which service provider onboarded. Possible values are,
+            * CC = Indicates that service provider is onboarded directly on Carbon Calculator.
+            * CT = Indicates that service provider is onboarded via Carbon Tracker/Carbon Calculator Experience.
+    ServiceProviderConfig:
+      title: ServiceProviderConfig
+      type: object
+      description: Configuration details for a Service Provider
+      properties:
+        customerName:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: ^[\w\s]{1,200}
+          description: Name with which a Service Provider is registered and will be identified on the server. This doesn't have to be a legal name.
+          example: 'ABC Bank'
+        supportedAccountRange:
+          type: string
+          minLength: 1
+          pattern: ^[\d\,]{1,}
+          description: Comma separated account range supported by a Service Provider.
+          example: '534403,518145,518152,5403,5424'
+        senderId:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Logical address of the service provider.
+          example: 'cc-fp@anz'
+        cardHolderBase:
+          type: string
+          pattern: '^(?:[1-9]\d{0,14}|999999999999999)$'
+          minLength: 1
+          maxLength: 15
+          exclusiveMinimum: false
+          description: Total card holder base details of issuer.
+          example: '1221'
+    ErrorWrapper:
+      title: ErrorWrapper
+      type: object
+      description: The error response object gets returned in case of any error.
+      required:
+        - Errors
+      properties:
+        Errors:
+          $ref: '#/components/schemas/Errors'
+    Errors:
+      title: Errors
+      type: object
+      description: Error object which returns a list of Error objects.
+      required:
+        - Error
+      properties:
+        Error:
+          $ref: '#/components/schemas/ErrorList'
+    ErrorList:
+      type: array
+      minItems: 1
+      items:
+        $ref: '#/components/schemas/Error'
+    Error:
+      title: Error
+      type: object
+      description: Error object which contains details about the error.
+      required:
+        - Source
+        - ReasonCode
+        - Description
+        - Recoverable
+      properties:
+        Source:
+          type: string
+          description: >-
+            The application name that generated this error. Every error message
+            that is generated and returned by the gateway will have this field
+            equal to Gateway. Other possible values are 'Carbon-Calculator' and
+            'Service-Provider'.
+          minLength: 1
+          maxLength: 100
+          example: Service-Provider
+        ReasonCode:
+          type: string
+          description: >-
+            A unique constant identifying the error case encountered during
+            request processing.
+          minLength: 1
+          maxLength: 100
+          example: INVALID_REQUEST_PARAMETER
+        Description:
+          type: string
+          description: Short description of the ReasonCode field.
+          minLength: 10
+          maxLength: 1000
+          example: >-
+            One of the request parameters is invalid, try again with correct
+            request.
+        Recoverable:
+          type: boolean
+          description: >-
+            Indicates whether this error will always be returned for this
+            request, or retrying could change the outcome.
+          example: false
+        Details:
+          type: string
+          description: >-
+            (Optional) Where appropriate, indicates detailed information about
+            data received and calculated during the request processing, to help the
+            user with diagnosing errors.
+          minLength: 0
+          maxLength: 5000
+          example: paymentCardId size must be between 36 and 36
+    MCC:
+      type: string
+      description: >-
+        Merchant category code of a payment transaction that uniquely defines a
+        merchant business.
+      minLength: 1
+      maxLength: 4
+      pattern: '^\d{1,4}'
+      example: '3997'
+    Id:
+      type: string
+      description: >-
+        A unique ID associated with a payment transaction, For example, original
+        payment transaction ID. The same ID will be returned in the response
+        corresponding to its payment transaction.
+      minLength: 1
+      maxLength: 100
+      pattern: '^[\w\-\_]{1,100}'
+      example: ee421c25-f928-4bf6-b884-3600b76b860d
+  parameters:
+    Channel:
+      in: header
+      name: channel
+      description: Channel of onboarding from which service provider onboarded and now the API call has been initiated. Possible values are,
+
+        * CC = Indicates that service provider is onboarded directly on Carbon Calculator. And API calls has been initiated directly.
+
+        * CT = Indicates that service provider is onboarded via Carbon Tracker/Carbon Calculator Experience. And API calls has been initiated via CT/CCE.
+
+      required: false
+      schema:
+        type: string
+        enum: [ CC, CT ]
+        example: 'CT'
+    OrigMcApiClientId:
+      in: header
+      name: origMcApiClientId
+      description: Client Id of originator issuer from where the API call has been initiated.
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 200
+        pattern: ^[\w\d\-\_]{1,200}
+        example: 'fjl2fxzsYl1OpvxkBItC9nVw1PSQc_b-eQMcmQFg011ab4b5'
+    Branding:
+      name: branding
+      in: query
+      description: If you have a branded content version, please supply it here
+      required: false
+      example: branding
+      schema:
+        type: string
+        minLength: 0
+        maxLength: 100
+    Language:
+      name: language
+      in: query
+      description: ISO 639-1 format language code in which the user wants to receive data.
+      required: false
+      example: en
+      schema:
+        type: string
+        pattern: '^[a-z]{2}$'
+    Period:
+      name: period
+      in: query
+      description: period in which user wants to see benchmark for specific country. Possible values of this property are as follows -
+        * month - returns monthly benchmarks
+        * year - returns yearly benchmarks
+      required: false
+      example: month
+      schema:
+        type: string
+    CountryCode:
+      name: country
+      in: query
+      description: ISO 3166-1 alpha-2 format country code of the specific country that the user wants to see benchmarks for.
+      required: true
+      example: US
+      schema:
+        type: string
+        pattern: '^[A-Z]{2}$'
+    MainCategory:
+      name: main_category
+      in: query
+      description: Main category for which comparison needed
+      required: false
+      example: home
+      schema:
+        maxLength: 50
+        minLength: 0
+        type: string
+  requestBodies:
+    ServiceProviderConfig:
+      description: Configuration details for service provider which needs to be update. It should contain only those parameters which you want to update. If you are calling this API for the first time then it is recommended to send all the parameters.
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ServiceProviderConfig'
+    Transactions:
+      description: List of payment transactions which needs to be scored.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Transactions'
+      required: true
+  responses:
+    TransactionFootprintsData:
+      description: >-
+        This response code is returned when a request is accepted and
+        successfully processed. A corresponding response will be returned for
+        the API caller.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TransactionFootprintsData'
+          examples:
+            TransactionFootprints:
+              $ref: '#/components/examples/TransactionFootprintsData'
+    SupportedCurrencies:
+      description: >-
+        This response code is returned when a request is accepted and
+        successfully processed. A corresponding response will be returned for
+        the API caller.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SupportedCurrencies'
+          examples:
+            SupportedCurrencies:
+              $ref: '#/components/examples/SupportedCurrencies'
+    SupportedMerchantCategories:
+      description: >-
+        This response code is returned when a request is accepted and
+        successfully processed. A corresponding response will be returned for
+        the API caller.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SupportedMerchantCategories'
+          examples:
+            SupportedMerchantCategories:
+              $ref: '#/components/examples/SupportedMerchantCategories'
+    ServiceProvider:
+      description: >-
+        The response object that contains the latest information of a Service
+        Provider as available on the server.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ServiceProvider'
+          examples:
+            ServiceProviderDetails:
+              $ref: '#/components/examples/ServiceProviderDetails'
+    UnsupportedMediaTypeError:
+      description: >-
+        This response code is returned when the MediaType in the request is other
+        than application/json.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorWrapper'
+          examples:
+            UnsupportedMediaTypeError:
+              $ref: '#/components/examples/UnsupportedMediaTypeError'
+    BadRequestError:
+      description: >-
+        This response code is returned when one or more request parameters is
+        either missing or is invalid. A caller should update his request as per
+        error details before trying again.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorWrapper'
+          examples:
+            BadRequestError:
+              $ref: '#/components/examples/BadRequestError'
+    ServiceProviderNotFoundError:
+      description: >-
+        This response code is returned when the server cannot find the account which
+        has been used to call this API.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorWrapper'
+          examples:
+            ServiceProviderNotFoundError:
+              $ref: '#/components/examples/ServiceProviderNotFoundError'
+    ServiceProviderBadRequestError:
+      description: This response code is returned when either a request is invalid or data provided in the request is in invalid format.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorWrapper'
+          examples:
+            ServiceProviderInvalidRequestParameterError:
+              $ref: '#/components/examples/ServiceProviderInvalidRequestParameterError'
+    Accepted:
+      description: Accepted
+    Ok:
+      description: OK
+  examples:
+    TransactionFootprintsData:
+      value:
+        - transactionId: ee421c25-f928-4bf6-b884-3600b76b860d
+          mcc: 3000
+          cardBrand: MA
+          scoreReference: MCC
+          carbonEmissionInGrams: 469343.47
+          carbonEmissionInOunces: 16555.62
+        - transactionId: a213c72c-f13a-4930-a5f9-8cf765d42ca1
+          mcc: 3000
+          cardBrand: OTH
+          scoreReference: MCC
+          carbonEmissionInGrams: 469343.47
+          carbonEmissionInOunces: 16555.62
+        - transactionId: fdc4626c-f51e-4ba6-9728-c79ac1d9aec8
+          mcc: 5962
+          scoreReference: MCC
+          carbonEmissionInGrams: 11905.70
+          carbonEmissionInOunces: 419.96
+          category:
+            mainCategory: Shopping
+            subCategory: Department Store
+            sector: Specialty Retail & Services
+            sectorCode: '302'
+
+    SupportedCurrencies:
+      value:
+        - currencyCode: SEK
+        - currencyCode: USD
+        - currencyCode: EUR
+        - currencyCode: GBP
+    SupportedMerchantCategories:
+      value:
+        - mcc: 10
+          category:
+            mainCategory: Shopping
+            subCategory: Department Store
+            sector: Department Stores
+            sectorCode: '201'
+        - mcc: 11
+          category:
+            mainCategory: Shopping
+            subCategory: Clothes & Fashion
+            sector: Variety Stores
+            sectorCode: '305'
+        - mcc: 12
+          category:
+            mainCategory: Food & Beverages
+            subCategory: Groceries
+            sector: Grocery Stores & Supermarkets
+            sectorCode: '101'
+        - mcc: 3860
+          category:
+            mainCategory: Leisure & Entertainment
+            subCategory: Hotels & Vacation
+            sector: 'Hotels, Motels & Resorts'
+            sectorCode: '604'
+        - mcc: 3861
+          category:
+            mainCategory: Leisure & Entertainment
+            subCategory: Hotels & Vacation
+            sector: 'Hotels, Motels & Resorts'
+            sectorCode: '604'
+        - mcc: 3620
+          category:
+            mainCategory: Leisure & Entertainment
+            subCategory: Hotels & Vacation
+            sector: 'Hotels, Motels & Resorts'
+            sectorCode: '604'
+        - mcc: 3862
+          category:
+            mainCategory: Leisure & Entertainment
+            subCategory: Hotels & Vacation
+            sector: 'Hotels, Motels & Resorts'
+            sectorCode: '604'
+        - mcc: 3621
+          category:
+            mainCategory: Leisure & Entertainment
+            subCategory: Hotels & Vacation
+            sector: 'Hotels, Motels & Resorts'
+            sectorCode: '604'
+        - mcc: 3863
+          category:
+            mainCategory: Leisure & Entertainment
+            subCategory: Hotels & Vacation
+            sector: 'Hotels, Motels & Resorts'
+            sectorCode: '604'
+        - mcc: 5800
+          category:
+            mainCategory: Shopping
+            subCategory: Department Store
+            sector: Specialty Retail & Services
+            sectorCode: '302'
+    ServiceProviderDetails:
+      value:
+        clientId: fjl2fxzsYl1OpvxkBItC9nVw1PSQc_b-eQMcmQFg011ab4b5
+        customerId: ''
+        customerName: ABC Bank
+        supportedAccountRange: '534403, 518145, 518152, 5403, 5424'
+        email: John.Doe@mail.com
+        status: ACTIVE
+    BadRequestError:
+      value:
+        Errors:
+          Error:
+            - Source: Carbon-Calculator
+              ReasonCode: INVALID_REQUEST_PARAMETER
+              Description: >-
+                One of the request parameters is invalid, try again with the correct
+                request.
+              Recoverable: false
+              Details: 'transactions[0].mcc size must be between 1 and 4'
+            - Source: Carbon-Calculator
+              ReasonCode: INVALID_REQUEST_PARAMETER
+              Description: >-
+                One of the request parameters is invalid, try again with the correct
+                request.
+              Recoverable: false
+              Details: 'transactions[0].mcc must match "^\d{1,4}"'
+    UnsupportedMediaTypeError:
+      value:
+        Errors:
+          Error:
+            - Source: Carbon-Calculator
+              ReasonCode: UNSUPPORTED_MEDIA_TYPE
+              Description: >-
+                Requested media type is not supported, try again with the supported
+                media type.
+              Recoverable: false
+              Details: ''
+    ServiceProviderNotFoundError:
+      value:
+        Errors:
+          Error:
+            - Source: Service-Provider
+              ReasonCode: ACCOUNT_NOT_FOUND
+              Description: >-
+                We cannot find the account which you are using to access this
+                service. Kindly register your account or contact your Mastercard
+                associate if you have already registered with us earlier.
+              Recoverable: false
+              Details: ''
+    ServiceProviderInvalidRequestParameterError:
+      value:
+        Errors:
+          Error:
+            - Source: 'Service-Provider'
+              ReasonCode: 'INVALID_REQUEST_PARAMETER'
+              Description: 'One of the request parameters is either invalid or is missing, try again with the correct request.'
+              Recoverable: false
+              Details: 'supportedAccountRange must match "^[\d\,]{1,}"'
+            - Source: 'Service-Provider'
+              ReasonCode: 'INVALID_REQUEST_PARAMETER'
+              Description: 'One of the request parameters is either invalid or is missing, try again with the correct request.'
+              Recoverable: false
+              Details: 'customerName must match "^[\w\s]{1,200}"'
