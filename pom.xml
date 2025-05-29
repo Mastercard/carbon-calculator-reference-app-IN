@@ -29,7 +29,7 @@
         <oauth1-signer-version>1.5.0</oauth1-signer-version>
         <client-encryption-version>1.7.0</client-encryption-version>
         <junit-version>4.13.1</junit-version>
-        <apache.tomcat.version>10.1.39</apache.tomcat.version>
+        <apache.tomcat.version>10.1.41</apache.tomcat.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <sonar.coverage.exclusions>
             **/CarbonCalculatorApplication.java,
