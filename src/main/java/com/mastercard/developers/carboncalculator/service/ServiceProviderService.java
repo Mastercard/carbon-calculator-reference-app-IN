@@ -31,9 +31,8 @@ public class ServiceProviderService {
 
     private final ServiceProviderApi serviceProviderApi;
 
-    public ServiceProviderService(ApiClient client) {
-        LOGGER.info("Initializing Service Provider API");
-        serviceProviderApi = new ServiceProviderApi(client);
+    public ServiceProviderService(ServiceProviderApi serviceProviderApi) {
+       this.serviceProviderApi=serviceProviderApi;
     }
 
     public ServiceProvider getServiceProvider() throws ApiException {

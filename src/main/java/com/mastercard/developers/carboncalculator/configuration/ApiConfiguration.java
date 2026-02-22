@@ -23,7 +23,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.Resource;
-
+import org.openapitools.client.api.EnvironmentalImpactApi;
+import org.openapitools.client.api.ServiceProviderApi;
+import org.openapitools.client.api.SupportedParametersApi;
 import java.security.PrivateKey;
 
 /**
@@ -63,6 +65,19 @@ public class ApiConfiguration {
         apiClient.setDebugging(false);
 
         return apiClient;
+    }
+    @Bean
+    public EnvironmentalImpactApi setupEnvironmentalImpactApi(ApiClient apiClient){
+        return  new EnvironmentalImpactApi(apiClient);
+    }
+
+    @Bean
+    public ServiceProviderApi setupServiceProviderApi(ApiClient apiClient){
+        return  new ServiceProviderApi(apiClient);
+    }
+    @Bean
+    public SupportedParametersApi setupSupportedParametersApi(ApiClient apiClient){
+        return  new SupportedParametersApi(apiClient);
     }
 
     public PrivateKey getSigningKey() {
