@@ -60,7 +60,7 @@ Fetches service provider details.
 5. **Update Service Provider**<br/>
 Allows a registered Service Provider to update its configuration on the server. A Service Provider should mandatorily call this API first after their successful project creation on Mastercard Developers Platform before they can successfully call other APIs.
 
-More details can be found [here](https://stage.developer.mastercard.com/drafts/carbon-calculator/staging/documentation/use-cases/).    
+More details can be found [here](https://developer.mastercard.com/carbon-calculator-ios/documentation/use-cases/).    
 
 
 ## Execute the Use-Cases   <a name="execute-the-use-cases"></a>
@@ -81,11 +81,11 @@ More details can be found [here](https://stage.developer.mastercard.com/drafts/c
                 - PUT <Host>/demo/service-providers <br>
 ## Service Documentation <a name="documentation"></a>
 
-Carbon Calculator documentation can be found [here](https://stage.developer.mastercard.com/drafts/carbon-calculator-ios/staging/documentation/).
+Carbon Calculator documentation can be found [here](https://developer.mastercard.com/carbon-calculator-ios/documentation).
 
 
 ## API Reference <a name="api-reference"></a>
-The Swagger API specification can be found [here](https://stage.developer.mastercard.com/drafts/carbon-calculator-ios/staging/documentation/api-reference/).
+The Swagger API specification can be found [here](https://developer.mastercard.com/carbon-calculator-ios/documentation/api-reference/).
 
 ## Support <a name="support"></a>
 Please send an email to **apisupport@mastercard.com** with any questions or feedback you may have.
