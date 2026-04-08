@@ -34,10 +34,9 @@ public class SupportedParametersService {
 
     private final SupportedParametersApi supportedParametersApi;
 
-    @Autowired
-    public SupportedParametersService(ApiClient client) {
+    public SupportedParametersService(SupportedParametersApi supportedParametersApi) {
         LOGGER.info("Initializing Supported Parameters API");
-        supportedParametersApi = new SupportedParametersApi(client);
+        this.supportedParametersApi=supportedParametersApi;
     }
 
     public List<Currency> getSupportedCurrencies() throws ApiException {

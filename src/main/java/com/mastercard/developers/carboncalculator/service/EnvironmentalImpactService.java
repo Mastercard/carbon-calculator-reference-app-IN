@@ -33,10 +33,9 @@ public class EnvironmentalImpactService {
 
     private final EnvironmentalImpactApi environmentalImpactApi;
 
-    @Autowired
-    public EnvironmentalImpactService(ApiClient apiClient) {
+    public EnvironmentalImpactService(EnvironmentalImpactApi environmentalImpactApi) {
         LOGGER.info("Initializing Calculate Transaction Footprint API");
-        environmentalImpactApi = new EnvironmentalImpactApi(apiClient);
+        this.environmentalImpactApi=environmentalImpactApi;
     }
 
     public List<TransactionFootprintData> calculateFootprints(List<TransactionData> mcTransactions) throws ApiException {
